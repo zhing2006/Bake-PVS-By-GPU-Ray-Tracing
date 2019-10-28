@@ -1,0 +1,60 @@
+﻿#pragma max_recursion_depth 1
+
+RaytracingAccelerationStructure _AccelerationStructure;
+
+RWTexture2D<float4> _Result;
+
+float3 _ViewLeftBottomCorner;
+float3 _ViewRightDir;
+float3 _ViewUpDir;
+float2 _ViewSize;
+
+float3 _TargetLeftBottomCorner;
+float3 _TargetRightDir;
+float3 _TargetUpDir;
+float2 _TargetSize;
+
+float2 _RayTracingStep;
+
+struct RayIntersection
+{
+  float missing;
+};
+
+[shader("raygeneration")]
+void BakeRaygenShader()
+{
+  uint2 dispatchIdx = DispatchRaysIndex().xy;
+  float2 uv = (dispatchIdx + 0.5f) / DispatchRaysDimensions().xy;
+
+  RayDesc rayDescriptor;
+  rayDescriptor.Origin = _ViewLeftBottomCorner + uv.x * _ViewSize.x * _ViewRightDir + uv.y * _ViewSize.y * _ViewUpDir;
+  for (float x = 0.5f * _RayTracingStep.x; x < _TargetSize.x; x += _RayTracingStep.x)
+  {
+    for (float y = 0.5f * _RayTracingStep.y; y < _TargetSize.y; y += _RayTracingStep.y)
+    {
+      float3 dir = (_TargetLeftBottomCorner + x * _TargetRightDir + y * _TargetUpDir) - rayDescriptor.Origin;
+      rayDescriptor.Direction = normalize(dir);
+      rayDescriptor.TMin = 1e-5f;
+      rayDescriptor.TMax = length(dir);
+
+      RayIntersection rayIntersection;
+      rayIntersection.missing = 0.0f;
+
+      TraceRay(_AccelerationStructure, RAY_FLAG_NONE, 0xFF, 0, 1, 0, rayDescriptor, rayIntersection);
+      if (rayIntersection.missing > 0.0f)
+      {
+        _Result[dispatchIdx] = float4(1, 1, 1, 1);
+        return;
+      }
+    }
+  }
+
+  _Result[dispatchIdx] = float4(0, 0, 0, 0);
+}
+
+[shader("miss")]
+void MissShader(inout RayIntersection rayIntersection : SV_RayPayload)
+{
+  rayIntersection.missing = 1.0f;
+}

@@ -1,0 +1,16 @@
+﻿#pragma kernel CSMain
+
+Texture2D<float> _Pixels;
+RWByteAddressBuffer _Result;
+uint _Width;
+uint _Height;
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+  if (id.x >= _Width || id.y >= _Height)
+    return;
+
+  int tmp;
+  _Result.InterlockedMax(0, _Pixels[id.xy].r * 255, tmp);
+}
