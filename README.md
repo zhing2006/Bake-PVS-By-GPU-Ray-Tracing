@@ -1,5 +1,9 @@
 # 使用DXR加速PVS烘焙
 
+Version 1.0, 2019-Oct-28
+<br/>
+Copyright 2019. ZHing. All rights received.
+
 # 1. PVS
 PVS全称为Potentially Visible Sets，是游戏引擎中常用的静态遮挡剔除方案。
 
@@ -20,11 +24,15 @@ Unity自带的Occlusion Culling在运行时消耗大量CPU时间且不支持动�
 计算PVS的第一步就是将整个场景空间划分为许多的格子。
 
 首先计算出场景的最大包围盒。
+
 ![avatar](images/1_worldbounds.png)
 
 根据需要创建2D或者3D的空间划分。
+
 ![avatar](images/2_2dgrids.png)
+
 ![avatar](images/3_3dgrids.png)
+
 本文后续以3D空间划分方案阐述。
 
 这样就获得了X * Y * Z个格子。接下来收集场景中所有的静态物体，假设一共收集到N个静态物体，那么就需要分配一个X * Y * Z * N大小的空间存储每一个格子对每一个对象的可见性信息。
@@ -35,7 +43,9 @@ Unity自带的Occlusion Culling在运行时消耗大量CPU时间且不支持动�
 在计算每一个格子到每一个物体的可见性测试之前我们可以做一些优化工作。
 
 每一个格子可以看成一个AABB，每一个物体也有自己的AABB。两个AABB是否可以互通没有阻挡，只需要在两个AABB上的六个面中能够相互“看到”的面上选点判定即可。
+
 ![avatar](images/4_planefaceplane.png)
+
 只有当两个面上点的连线与两个面的法线的夹角都为0-90度时，两个面上的点才可能相互“看到”。作为简单判定，只判断面的四个顶点是否满足条件。
 ```csharp
 public static bool IsPlaneFacePlane(Plane plane1, Plane plane2)
@@ -70,9 +80,11 @@ public static bool IsPlaneFacePlane(Plane plane1, Plane plane2)
 当判定两个面上的点可能互相“看到”之后，就是在这两个面上取点然后做RayCast看是否可连通，如果任何一次RayCast连通则两个面互相可见，即两个AABB互相可见。
 
 在两个面上选定点时，我们没有采用随机取点的方案，而是按一定的uv间隔取点。
+
 ![avatar](images/5_selectpoints.png)
 
 为什么不采用随机选点的方案？请参看下图
+
 ![avatar](images/6_randompoints.png)
 
 (a)为随机采样，(b)我们选择的方案，(c)分层随机采样
@@ -105,6 +117,7 @@ public bool RayTracingPlane2Plane(Plane plane1, Plane plane2)
 
 ## 2.3. 烘焙
 接下来就是一个接一个的计算每个格子对应每个物体的可见性，这里为了快速验证结果，只烘焙了下图中蓝色球体的PVS信息。
+
 ![avatar](images/7_cpuresult.png)
 
 红线连线表示在*眼睛*位置不可见，绿色连线表示可见。
@@ -265,7 +278,9 @@ GPU烘焙耗时：5.335464s秒
 截至本文发布时，Unity集成DXR的版本为2019.3 Beta8。在使用RayTrace Shader存在非常严重的问题，如果一帧内调用Dispatch过多将会导致编辑器**崩溃**！！！
 
 因此为了得到如下烘焙结果，
+
 ![avatar](images/8_final.png)
+
 必须进行分批烘焙，每次最多烘焙3个目标。。。（为了烘焙此结果蛋都碎了一地）
 
 分批烘焙代码参阅源代码中的**PVSBakerAvoidCrashWindow**类。
