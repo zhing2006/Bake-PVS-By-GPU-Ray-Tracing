@@ -31,7 +31,7 @@ public static class PVSBaker
 
     try
     {
-      for (var index = 1; index < pvsManager.renderers.Count; ++index)
+      for (var index = 0; index < pvsManager.renderers.Count; ++index)
       {
         if (false == BakeVisibleFlagForRenderer(pvsManager, index, (float) index / pvsManager.renderers.Count))
         {
